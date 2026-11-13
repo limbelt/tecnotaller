@@ -1,0 +1,6 @@
+{
+  "name": "TecnoTaller",
+  "description": "Gestión de reparaciones de celulares, computadoras e instalación de cámaras de seguridad, con directorio de clientes, inventario de repuestos y seguimiento de órdenes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

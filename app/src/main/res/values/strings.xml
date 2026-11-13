@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">TecnoTaller</string>
+    <string name="auth_tagline">Control integral para tu taller técnico</string>
+    <string name="auth_subtitle">Registra reparaciones de celulares, computadoras e instalaciones de cámaras de seguridad, clientes e inventario de repuestos en tiempo real.</string>
+    <string name="auth_sign_in_google">Iniciar sesión con Google</string>
+    <string name="auth_signing_in">Conectando con Google…</string>
+    <string name="nav_orders">Órdenes</string>
+    <string name="nav_inventory">Inventario</string>
+    <string name="nav_clients">Clientes</string>
+    <string name="action_sign_out">Cerrar sesión</string>
+    <string name="action_new_order">Nueva orden</string>
+    <string name="action_new_part">Nuevo repuesto</string>
+    <string name="action_new_client">Nuevo cliente</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_edit">Editar</string>
+</resources>

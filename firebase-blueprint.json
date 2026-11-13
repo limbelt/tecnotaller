@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "Cliente del taller con datos de contacto y dirección para reparaciones o instalaciones.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID del propietario autenticado" },
+        "name": { "type": "string", "description": "Nombre completo del cliente" },
+        "phone": { "type": "string", "description": "Teléfono de contacto" },
+        "address": { "type": "string", "description": "Dirección física (especialmente para instalaciones)" },
+        "email": { "type": "string", "description": "Correo electrónico opcional" },
+        "notes": { "type": "string", "description": "Notas adicionales del cliente" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Marca temporal de creación (FieldValue.serverTimestamp())" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Marca temporal de actualización (FieldValue.serverTimestamp())" }
+      },
+      "required": ["userId", "name", "phone", "createdAt", "updatedAt"]
+    },
+    "SparePart": {
+      "title": "SparePart",
+      "description": "Repuesto o insumo en inventario del taller.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID del propietario autenticado" },
+        "sku": { "type": "string", "description": "Código SKU interno o de fabricante" },
+        "name": { "type": "string", "description": "Nombre descriptivo del repuesto" },
+        "category": {
+          "type": "string",
+          "enum": ["PANTALLA", "BATERIA", "CONECTOR", "ALMACENAMIENTO_RAM", "CAMARA_CCTV", "CABLE_FUENTE", "OTRO"],
+          "description": "Categoría del repuesto"
+        },
+        "compatibility": { "type": "string", "description": "Modelos compatibles" },
+        "stock": { "type": "integer", "description": "Cantidad disponible en inventario" },
+        "minStock": { "type": "integer", "description": "Stock mínimo para alerta de reposición" },
+        "costPrice": { "type": "number", "description": "Costo de adquisición unitario" },
+        "salePrice": { "type": "number", "description": "Precio de venta o instalación unitario" },
+        "supplier": { "type": "string", "description": "Proveedor del repuesto" },
+        "location": { "type": "string", "description": "Ubicación en estante o gaveta" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Marca temporal de creación (FieldValue.serverTimestamp())" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Marca temporal de actualización (FieldValue.serverTimestamp())" }
+      },
+      "required": ["userId", "name", "category", "stock", "minStock", "costPrice", "salePrice", "createdAt", "updatedAt"]
+    },
+    "RepairOrder": {
+      "title": "RepairOrder",
+      "description": "Orden de servicio técnico para celular, computadora o instalación de cámaras de seguridad.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID del propietario autenticado" },
+        "orderCode": { "type": "string", "description": "Folio único legible de la orden" },
+        "clientId": { "type": "string", "description": "Referencia opcional al documento de cliente" },
+        "clientName": { "type": "string", "description": "Nombre del cliente" },
+        "clientPhone": { "type": "string", "description": "Teléfono del cliente" },
+        "clientAddress": { "type": "string", "description": "Dirección del cliente o lugar de instalación" },
+        "serviceType": {
+          "type": "string",
+          "enum": ["CELULAR", "COMPUTADORA", "CAMARAS_SEGURIDAD"],
+          "description": "Tipo de servicio técnico"
+        },
+        "deviceTitle": { "type": "string", "description": "Equipo, marca/modelo o kit de cámaras" },
+        "deviceSerial": { "type": "string", "description": "IMEI, número de serie o modelo DVR/NVR" },
+        "issueDescription": { "type": "string", "description": "Falla reportada o alcance de la instalación" },
+        "diagnosis": { "type": "string", "description": "Diagnóstico técnico y trabajos realizados" },
+        "status": {
+          "type": "string",
+          "enum": ["RECIBIDO", "EN_DIAGNOSTICO", "ESPERANDO_REPUESTO", "EN_REPARACION", "LISTO", "ENTREGADO", "CANCELADO"],
+          "description": "Estado actual de la orden"
+        },
+        "laborCost": { "type": "number", "description": "Costo de mano de obra" },
+        "partsTotal": { "type": "number", "description": "Subtotal acumulado de repuestos utilizados" },
+        "usedParts": { "type": "array", "description": "Lista acotada (máx. 30) de repuestos asignados a la orden" },
+        "notes": { "type": "string", "description": "Observaciones o garantía" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Marca temporal de creación (FieldValue.serverTimestamp())" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Marca temporal de actualización (FieldValue.serverTimestamp())" }
+      },
+      "required": ["userId", "orderCode", "clientName", "clientPhone", "serviceType", "deviceTitle", "issueDescription", "status", "laborCost", "partsTotal", "usedParts", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Directorio de clientes aislado por usuario autenticado."
+    },
+    "/users/{userId}/parts/{partId}": {
+      "schema": { "$ref": "#/entities/SparePart" },
+      "description": "Inventario de repuestos aislado por usuario autenticado."
+    },
+    "/users/{userId}/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/RepairOrder" },
+      "description": "Órdenes de reparación e instalación aisladas por usuario autenticado."
+    }
+  }
+}

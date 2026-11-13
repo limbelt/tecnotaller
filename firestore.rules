@@ -1,0 +1,163 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidClient(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.phone is string && data.phone.size() >= 1 && data.phone.size() <= 30 &&
+             (!('address' in data) || (data.address is string && data.address.size() <= 250)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 120)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500));
+    }
+
+    function isValidSparePart(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+             data.category in ['PANTALLA', 'BATERIA', 'CONECTOR', 'ALMACENAMIENTO_RAM', 'CAMARA_CCTV', 'CABLE_FUENTE', 'OTRO'] &&
+             data.stock is int && data.stock >= 0 && data.stock <= 100000 &&
+             data.minStock is int && data.minStock >= 0 && data.minStock <= 10000 &&
+             data.costPrice is number && data.costPrice >= 0 && data.costPrice <= 1000000 &&
+             data.salePrice is number && data.salePrice >= 0 && data.salePrice <= 1000000 &&
+             (!('sku' in data) || (data.sku is string && data.sku.size() <= 40)) &&
+             (!('compatibility' in data) || (data.compatibility is string && data.compatibility.size() <= 150)) &&
+             (!('supplier' in data) || (data.supplier is string && data.supplier.size() <= 100)) &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 80));
+    }
+
+    function isValidRepairOrder(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.orderCode is string && data.orderCode.size() >= 1 && data.orderCode.size() <= 30 &&
+             data.clientName is string && data.clientName.size() >= 1 && data.clientName.size() <= 100 &&
+             data.clientPhone is string && data.clientPhone.size() >= 1 && data.clientPhone.size() <= 30 &&
+             data.serviceType in ['CELULAR', 'COMPUTADORA', 'CAMARAS_SEGURIDAD'] &&
+             data.deviceTitle is string && data.deviceTitle.size() >= 1 && data.deviceTitle.size() <= 120 &&
+             data.issueDescription is string && data.issueDescription.size() >= 1 && data.issueDescription.size() <= 1000 &&
+             data.status in ['RECIBIDO', 'EN_DIAGNOSTICO', 'ESPERANDO_REPUESTO', 'EN_REPARACION', 'LISTO', 'ENTREGADO', 'CANCELADO'] &&
+             data.laborCost is number && data.laborCost >= 0 && data.laborCost <= 1000000 &&
+             data.partsTotal is number && data.partsTotal >= 0 && data.partsTotal <= 1000000 &&
+             data.usedParts is list && data.usedParts.size() <= 30 &&
+             (data.usedParts.size() == 0 || (
+               data.usedParts[0] is map &&
+               data.usedParts[0].keys().hasAll(['partId', 'partName', 'quantity', 'unitPrice']) &&
+               data.usedParts[0].keys().hasOnly(['partId', 'partName', 'quantity', 'unitPrice']) &&
+               data.usedParts[0].partId is string &&
+               data.usedParts[0].partName is string &&
+               data.usedParts[0].quantity is int && data.usedParts[0].quantity >= 1 &&
+               data.usedParts[0].unitPrice is number && data.usedParts[0].unitPrice >= 0
+             )) &&
+             (!('clientId' in data) || (data.clientId is string && data.clientId.size() <= 128)) &&
+             (!('clientAddress' in data) || (data.clientAddress is string && data.clientAddress.size() <= 250)) &&
+             (!('deviceSerial' in data) || (data.deviceSerial is string && data.deviceSerial.size() <= 80)) &&
+             (!('diagnosis' in data) || (data.diagnosis is string && data.diagnosis.size() <= 1000)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000));
+    }
+
+    match /users/{userId} {
+      match /clients/{clientId} {
+        allow get: if isOwner(userId) && isValidId(clientId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(clientId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'name', 'phone', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'phone', 'address', 'email', 'notes', 'createdAt', 'updatedAt']) &&
+                         isValidClient(incoming()) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
+
+        allow update: if isOwner(userId) &&
+                         isValidId(clientId) &&
+                         isValidClient(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'address', 'email', 'notes', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(clientId);
+      }
+
+      match /parts/{partId} {
+        allow get: if isOwner(userId) && isValidId(partId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(partId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'name', 'category', 'stock', 'minStock', 'costPrice', 'salePrice', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'sku', 'name', 'category', 'compatibility', 'stock', 'minStock', 'costPrice', 'salePrice', 'supplier', 'location', 'createdAt', 'updatedAt']) &&
+                         isValidSparePart(incoming()) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
+
+        allow update: if isOwner(userId) &&
+                         isValidId(partId) &&
+                         isValidSparePart(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['sku', 'name', 'category', 'compatibility', 'stock', 'minStock', 'costPrice', 'salePrice', 'supplier', 'location', 'updatedAt'])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(partId);
+      }
+
+      match /orders/{orderId} {
+        allow get: if isOwner(userId) && isValidId(orderId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(orderId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'orderCode', 'clientName', 'clientPhone', 'serviceType', 'deviceTitle', 'issueDescription', 'status', 'laborCost', 'partsTotal', 'usedParts', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'orderCode', 'clientId', 'clientName', 'clientPhone', 'clientAddress', 'serviceType', 'deviceTitle', 'deviceSerial', 'issueDescription', 'diagnosis', 'status', 'laborCost', 'partsTotal', 'usedParts', 'notes', 'createdAt', 'updatedAt']) &&
+                         isValidRepairOrder(incoming()) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
+
+        allow update: if isOwner(userId) &&
+                         isValidId(orderId) &&
+                         isValidRepairOrder(incoming()) &&
+                         !(existing().status in ['ENTREGADO', 'CANCELADO']) &&
+                         incoming().userId == existing().userId &&
+                         incoming().orderCode == existing().orderCode &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['usedParts', 'partsTotal', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['clientId', 'clientName', 'clientPhone', 'clientAddress', 'serviceType', 'deviceTitle', 'deviceSerial', 'issueDescription', 'diagnosis', 'status', 'laborCost', 'partsTotal', 'usedParts', 'notes', 'updatedAt'])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(orderId);
+      }
+    }
+  }
+}
